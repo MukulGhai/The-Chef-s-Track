@@ -2,7 +2,7 @@
 
 **DBMS Project (UCS310) | Thapar Institute of Engineering & Technology**
 
-**Team:** Sabyasachi Chaturvedi (102303458) | Saarthi Arora (102303457) | Mukul Ghai (102303463)
+**Team:** | Mukul Ghai (102303463) | Sabyasachi Chaturvedi (102303458) | Saarthi Arora (102303457) 
 
 ---
 
