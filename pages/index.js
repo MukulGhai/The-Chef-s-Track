@@ -2,416 +2,350 @@ import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 
+// Menu item descriptions & image mapping
+const ITEM_META = {
+  // Appetizers
+  'Samosa':           { desc: 'Hand-folded pastry shells filled with spiced potato and green peas, served with house-made mint chutney and aged tamarind reduction.', img: '/food/samosa.png' },
+  'Paneer Tikka':     { desc: 'Farm-fresh paneer marinated in hung curd and aromatic spices, char-grilled in our tandoor with seasonal bell peppers and onion petals.', img: '/food/paneer-tikka.png' },
+  'Chicken Tikka':    { desc: 'Tender free-range chicken marinated for 12 hours in a saffron and yogurt blend, kissed by the tandoor for a smoky, golden finish.', img: '/food/chicken-biryani.png' },
+  'Hara Bhara Kebab': { desc: 'Delicate green patties of spinach, green peas and fresh herbs, pan-seared until golden, served with a cooling cucumber raita.', img: '/food/paneer-tikka.png' },
+  'Dahi Puri':        { desc: 'Crisp semolina shells filled with spiced potato, crowned with chilled sweetened yogurt, tamarind, and a dusting of chaat masala.', img: '/food/samosa.png' },
+  // Main Course
+  'Butter Chicken':        { desc: 'Succulent tandoor-smoked chicken in a velvety tomato and cream sauce, slow-reduced with Kashmiri spices and finished with cultured butter.', img: '/food/butter-chicken.png' },
+  'Paneer Butter Masala':  { desc: 'Soft cottage cheese cubes simmered in a rich, aromatic tomato-cashew gravy with cream and a touch of dried fenugreek.', img: '/food/paneer-butter-masala.png' },
+  'Dal Makhani':           { desc: 'Whole black lentils slow-cooked over 24 hours on a wood fire with aged butter, cream and a whisper of asafoetida.', img: '/food/dal-makhani.png' },
+  'Palak Paneer':          { desc: 'Baby spinach blanched and puréed with fresh spices, embracing cubes of house-made paneer — a classic of the Punjab kitchen.', img: '/food/paneer-butter-masala.png' },
+  'Malai Kofta':           { desc: 'Delicate dumplings of paneer and potato in a saffron-laced cream and tomato gravy, perfumed with cardamom and mace.', img: '/food/paneer-butter-masala.png' },
+  'Mutton Rogan Josh':     { desc: 'Slow-braised Kashmiri lamb in an aromatic blend of whole spices and dried cockscomb flower, a heritage recipe prepared with great care.', img: '/food/butter-chicken.png' },
+  'Chicken Biryani':       { desc: 'Long-grain Basmati rice layered with saffron-marinated chicken, slow-cooked dum-style in a sealed vessel with caramelised onions and whole spices.', img: '/food/chicken-biryani.png' },
+  'Veg Biryani':           { desc: 'Fragrant Basmati steamed with seasonal vegetables, rose water and pure saffron strands, finished with fried shallots and fresh mint.', img: '/food/chicken-biryani.png' },
+  'Fish Curry':            { desc: 'Coastal-style curry of fresh catch simmered in a coconut milk and tamarind base with mustard seeds, curry leaf and green chili.', img: '/food/butter-chicken.png' },
+  'Lamb Korma':            { desc: 'Tender slow-braised lamb shoulder in a Mughal-inspired korma of cashew, cream and rosewater — a dish of remarkable refinement.', img: '/food/butter-chicken.png' },
+  // Bread
+  'Garlic Naan':      { desc: 'Leavened bread baked against the walls of our clay tandoor, brushed with cultured garlic butter and hand-torn fresh coriander.', img: '/food/garlic-naan.png' },
+  'Tandoori Roti':    { desc: 'Whole wheat flatbread, hand-rolled and baked in the tandoor — the perfect companion for any curry on our menu.', img: '/food/garlic-naan.png' },
+  'Stuffed Paratha':  { desc: 'Layered whole wheat bread filled with seasoned potato and paneer, cooked on a griddle with pure desi ghee until crisp and golden.', img: '/food/garlic-naan.png' },
+  'Peshwari Naan':    { desc: 'A soft, indulgent bread from the Afghan frontier, filled with a blend of almonds, coconut, sultanas and a hint of cardamom.', img: '/food/garlic-naan.png' },
+  // Desserts
+  'Gulab Jamun':    { desc: 'Milk-solid dumplings, gently fried to a deep amber, resting in a warm saffron and rose-water syrup, garnished with pistachio slivers.', img: '/food/gulab-jamun.png' },
+  'Rasgulla':       { desc: 'Cloud-soft chenna cheese spheres, poached in a delicate light sugar syrup infused with rose water — a Bengal confectionery treasure.', img: '/food/gulab-jamun.png' },
+  'Kulfi Falooda':  { desc: 'House-churned saffron and pistachio kulfi served over chilled vermicelli, rose syrup and basil seeds — a symphony of texture and flavour.', img: '/food/kulfi.png' },
+  'Kheer':          { desc: 'Slow-cooked rice pudding reduced in full-cream milk with green cardamom, saffron strands and topped with gold-dusted blanched almonds.', img: '/food/gulab-jamun.png' },
+  'Gajar Halwa':    { desc: 'Slow-simmered winter carrots in full-cream milk and pure desi ghee, sweetened with jaggery and crowned with cashews and raisins.', img: '/food/gulab-jamun.png' },
+  // Beverages
+  'Mango Lassi':       { desc: 'Hand-blended Alphonso mango with thick strained yogurt, a pinch of cardamom and pure saffron — the jewel of Indian refreshment.', img: '/food/mango-lassi.png' },
+  'Masala Chai':       { desc: 'A rich blend of Assam tea leaves simmered with fresh ginger, green cardamom, clove and cinnamon, served with full-cream milk.', img: '/food/mango-lassi.png' },
+  'Sweet Lassi':       { desc: 'Thick churned yogurt whisked with rose water and a touch of jaggery, garnished with dried rose petals and a pinch of cardamom.', img: '/food/mango-lassi.png' },
+  'Fresh Lime Soda':   { desc: 'Hand-pressed Himalayan lime with chilled sparkling water, served sweet, salted or with a house-made ginger and chili infusion.', img: '/food/mango-lassi.png' },
+};
+
+
+const DEFAULT_META = { desc: 'A masterfully prepared dish using only the finest seasonal ingredients, curated by our executive chef.', img: '/food/hero.png' };
+
 export default function Home() {
   const [menu, setMenu] = useState([]);
   const [cart, setCart] = useState([]);
   const [waiters, setWaiters] = useState([]);
-  const [step, setStep] = useState('menu'); // menu | checkout | bill
+  const [step, setStep] = useState('menu');
   const [form, setForm] = useState({ cust_fname: '', cust_lname: '', contact_no: '', waiter_id: '' });
   const [bill, setBill] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [menuLoading, setMenuLoading] = useState(true);
   const [filter, setFilter] = useState('All');
+  const [errors, setErrors] = useState({});
+  const [toast, setToast] = useState(null);
 
   useEffect(() => {
-    fetch('/api/menu').then(r => r.json()).then(setMenu);
-    fetch('/api/staff?type=waiters').then(r => r.json()).then(setWaiters);
+    Promise.all([
+      fetch('/api/menu').then(r => r.json()),
+      fetch('/api/staff?type=waiters').then(r => r.json()),
+    ]).then(([m, w]) => { setMenu(m); setWaiters(w); setMenuLoading(false); })
+      .catch(() => setMenuLoading(false));
   }, []);
+
+  const showToast = (msg, type = 'success') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   const categories = ['All', ...new Set(menu.map(i => i.item_type))];
   const filtered = filter === 'All' ? menu : menu.filter(i => i.item_type === filter);
+  const cartCountFor = id => cart.filter(c => c.item_no === id).length;
 
   const addToCart = (item) => {
+    if (cartCountFor(item.item_no) >= item.item_stock) {
+      showToast('No more stock available', 'error'); return;
+    }
     setCart(c => [...c, item]);
+    showToast(`${item.item_name} added to your order`);
   };
 
-  const removeFromCart = (idx) => {
-    setCart(c => c.filter((_, i) => i !== idx));
-  };
-
+  const removeFromCart = idx => setCart(c => c.filter((_, i) => i !== idx));
   const cartTotal = cart.reduce((s, i) => s + i.item_price, 0);
 
-  const placeOrder = async () => {
-    if (!form.cust_fname || !form.contact_no || !form.waiter_id) return alert('Please fill all fields');
-    setLoading(true);
-    const res = await fetch('/api/orders', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...form, items: cart.map(i => i.item_no) })
-    });
-    const data = await res.json();
-    if (data.error) { alert(data.error); setLoading(false); return; }
-
-    const billRes = await fetch('/api/bills', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ord_no: data.ord_no, discount: 0 })
-    });
-    const billData = await billRes.json();
-    setBill({ ...billData, ord_no: data.ord_no });
-    setStep('bill');
-    setLoading(false);
+  const validate = () => {
+    const e = {};
+    if (!form.cust_fname.trim()) e.cust_fname = 'Required';
+    if (!form.contact_no.trim()) e.contact_no = 'Required';
+    else if (!/^\d{10}$/.test(form.contact_no.trim())) e.contact_no = 'Must be 10 digits';
+    if (!form.waiter_id) e.waiter_id = 'Please select';
+    setErrors(e);
+    return !Object.keys(e).length;
   };
+
+  const placeOrder = async () => {
+    if (!validate()) return;
+    setLoading(true);
+    try {
+      const r1 = await fetch('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, items: cart.map(i => i.item_no) }) });
+      const d1 = await r1.json();
+      if (!r1.ok) { showToast(d1.error || 'Order failed', 'error'); return; }
+      const r2 = await fetch('/api/bills', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ord_no: d1.ord_no, discount: 0 }) });
+      const d2 = await r2.json();
+      if (!r2.ok) { showToast(d2.error || 'Billing failed', 'error'); return; }
+      setBill({ ...d2, ord_no: d1.ord_no });
+      setStep('bill');
+    } catch { showToast('Network error. Please try again.', 'error'); }
+    finally { setLoading(false); }
+  };
+
+  const reset = () => {
+    setCart([]); setStep('menu'); setBill(null);
+    setForm({ cust_fname: '', cust_lname: '', contact_no: '', waiter_id: '' });
+    fetch('/api/menu').then(r => r.json()).then(setMenu);
+  };
+
+  const getMeta = name => ITEM_META[name] || DEFAULT_META;
 
   return (
     <>
       <Head>
-        <title>The Chef's Track</title>
-        <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+        <title>The Chef's Track — Fine Dining</title>
+        <meta name="description" content="Experience culinary excellence at The Chef's Track. Reserve your table or order online." />
       </Head>
-      <style>{`
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        :root {
-          --cream: #faf6f0;
-          --dark: #1a1208;
-          --gold: #c8963e;
-          --gold-light: #e8b86d;
-          --rust: #8b3a1e;
-          --sage: #5a6e4e;
-          --text: #2d2010;
-          --muted: #8a7a65;
-        }
-        body { background: var(--cream); color: var(--text); font-family: 'DM Sans', sans-serif; min-height: 100vh; }
-        .nav {
-          background: var(--dark);
-          padding: 1rem 2rem;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          position: sticky; top: 0; z-index: 100;
-          border-bottom: 2px solid var(--gold);
-        }
-        .nav-logo { font-family: 'Playfair Display', serif; color: var(--gold); font-size: 1.5rem; font-weight: 900; letter-spacing: 1px; }
-        .nav-links { display: flex; gap: 1.5rem; align-items: center; }
-        .nav-links a { color: #c9b99a; text-decoration: none; font-size: 0.875rem; font-weight: 500; letter-spacing: 0.5px; transition: color 0.2s; }
-        .nav-links a:hover { color: var(--gold); }
-        .cart-btn {
-          background: var(--gold);
-          color: var(--dark);
-          border: none;
-          padding: 0.5rem 1.25rem;
-          border-radius: 2rem;
-          font-weight: 600;
-          cursor: pointer;
-          font-family: 'DM Sans', sans-serif;
-          font-size: 0.875rem;
-          transition: background 0.2s;
-        }
-        .cart-btn:hover { background: var(--gold-light); }
-        .hero {
-          background: linear-gradient(135deg, var(--dark) 0%, #2d1a08 50%, #1a0f04 100%);
-          color: white;
-          padding: 4rem 2rem 3rem;
-          text-align: center;
-          position: relative;
-          overflow: hidden;
-        }
-        .hero::before {
-          content: '';
-          position: absolute; inset: 0;
-          background: radial-gradient(ellipse at 50% 0%, rgba(200,150,62,0.15) 0%, transparent 70%);
-        }
-        .hero h1 { font-family: 'Playfair Display', serif; font-size: clamp(2.5rem, 6vw, 4.5rem); font-weight: 900; line-height: 1.1; position: relative; }
-        .hero h1 span { color: var(--gold); }
-        .hero p { color: #c9b99a; margin-top: 1rem; font-size: 1.1rem; position: relative; }
-        .main { max-width: 1200px; margin: 0 auto; padding: 2rem; }
-        .filters { display: flex; gap: 0.75rem; margin-bottom: 2rem; flex-wrap: wrap; }
-        .filter-btn {
-          padding: 0.5rem 1.25rem;
-          border-radius: 2rem;
-          border: 1.5px solid var(--gold);
-          background: transparent;
-          color: var(--gold);
-          font-family: 'DM Sans', sans-serif;
-          font-size: 0.875rem;
-          cursor: pointer;
-          transition: all 0.2s;
-          font-weight: 500;
-        }
-        .filter-btn.active, .filter-btn:hover { background: var(--gold); color: var(--dark); }
-        .menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; }
-        .menu-card {
-          background: white;
-          border-radius: 16px;
-          overflow: hidden;
-          box-shadow: 0 2px 12px rgba(26,18,8,0.08);
-          transition: transform 0.2s, box-shadow 0.2s;
-          border: 1px solid rgba(200,150,62,0.1);
-        }
-        .menu-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(26,18,8,0.14); }
-        .card-img {
-          height: 140px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 3.5rem;
-        }
-        .card-body { padding: 1.25rem; }
-        .card-type { font-size: 0.7rem; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--gold); margin-bottom: 0.35rem; }
-        .card-name { font-family: 'Playfair Display', serif; font-size: 1.2rem; font-weight: 700; color: var(--dark); margin-bottom: 0.5rem; }
-        .card-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; }
-        .card-price { font-size: 1.25rem; font-weight: 700; color: var(--rust); }
-        .stock-badge {
-          font-size: 0.7rem;
-          padding: 0.2rem 0.6rem;
-          border-radius: 1rem;
-          font-weight: 600;
-        }
-        .stock-ok { background: #eaf5e9; color: var(--sage); }
-        .stock-low { background: #fff3e0; color: #e65100; }
-        .stock-out { background: #fce4e4; color: #c62828; }
-        .add-btn {
-          background: var(--dark);
-          color: var(--gold);
-          border: none;
-          width: 36px; height: 36px;
-          border-radius: 50%;
-          font-size: 1.25rem;
-          cursor: pointer;
-          display: flex; align-items: center; justify-content: center;
-          transition: background 0.2s;
-        }
-        .add-btn:hover { background: var(--gold); color: var(--dark); }
-        .add-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-        /* Cart Sidebar */
-        .cart-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 200; display: none; }
-        .cart-overlay.open { display: block; }
-        .cart-sidebar {
-          position: fixed; right: 0; top: 0; bottom: 0;
-          width: min(420px, 100vw);
-          background: white;
-          z-index: 201;
-          transform: translateX(100%);
-          transition: transform 0.3s ease;
-          display: flex; flex-direction: column;
-          box-shadow: -4px 0 24px rgba(0,0,0,0.15);
-        }
-        .cart-sidebar.open { transform: translateX(0); }
-        .cart-header {
-          background: var(--dark);
-          color: white;
-          padding: 1.5rem;
-          display: flex; justify-content: space-between; align-items: center;
-          border-bottom: 2px solid var(--gold);
-        }
-        .cart-header h2 { font-family: 'Playfair Display', serif; color: var(--gold); font-size: 1.4rem; }
-        .close-btn { background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; }
-        .cart-items { flex: 1; overflow-y: auto; padding: 1rem; }
-        .cart-item {
-          display: flex; justify-content: space-between; align-items: center;
-          padding: 0.75rem 0;
-          border-bottom: 1px solid #f0ebe3;
-        }
-        .cart-item-name { font-weight: 500; font-size: 0.9rem; }
-        .cart-item-price { color: var(--rust); font-weight: 600; }
-        .remove-btn { background: none; border: none; color: #ccc; cursor: pointer; font-size: 1.1rem; margin-left: 0.75rem; }
-        .remove-btn:hover { color: var(--rust); }
-        .cart-footer { padding: 1.5rem; border-top: 2px solid #f0ebe3; background: #faf6f0; }
-        .total-row { display: flex; justify-content: space-between; font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem; }
-        .checkout-btn {
-          width: 100%;
-          background: var(--gold);
-          color: var(--dark);
-          border: none;
-          padding: 1rem;
-          border-radius: 12px;
-          font-size: 1rem;
-          font-weight: 700;
-          cursor: pointer;
-          font-family: 'DM Sans', sans-serif;
-          transition: background 0.2s;
-        }
-        .checkout-btn:hover { background: var(--gold-light); }
-        /* Checkout form */
-        .checkout-container { max-width: 600px; margin: 3rem auto; padding: 2rem; background: white; border-radius: 20px; box-shadow: 0 4px 24px rgba(26,18,8,0.1); }
-        .checkout-container h2 { font-family: 'Playfair Display', serif; font-size: 2rem; color: var(--dark); margin-bottom: 1.5rem; }
-        .form-group { margin-bottom: 1.25rem; }
-        .form-group label { display: block; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 0.4rem; }
-        .form-group input, .form-group select {
-          width: 100%; padding: 0.8rem 1rem;
-          border: 1.5px solid #e0d8cc;
-          border-radius: 10px;
-          font-family: 'DM Sans', sans-serif;
-          font-size: 0.95rem;
-          color: var(--text);
-          background: var(--cream);
-          transition: border-color 0.2s;
-          outline: none;
-        }
-        .form-group input:focus, .form-group select:focus { border-color: var(--gold); }
-        .order-summary { background: #faf6f0; border-radius: 12px; padding: 1.25rem; margin-bottom: 1.5rem; }
-        .order-summary h3 { font-family: 'Playfair Display', serif; font-size: 1.1rem; margin-bottom: 0.75rem; color: var(--dark); }
-        .summary-item { display: flex; justify-content: space-between; padding: 0.3rem 0; font-size: 0.9rem; }
-        .summary-total { display: flex; justify-content: space-between; font-weight: 700; padding-top: 0.75rem; margin-top: 0.5rem; border-top: 1px solid #e0d8cc; font-size: 1rem; }
-        .back-btn { background: transparent; border: 1.5px solid var(--gold); color: var(--gold); padding: 0.75rem 1.5rem; border-radius: 10px; cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 0.95rem; font-weight: 600; margin-right: 1rem; transition: all 0.2s; }
-        .back-btn:hover { background: var(--gold); color: var(--dark); }
-        /* Bill */
-        .bill-container { max-width: 500px; margin: 3rem auto; padding: 2rem; background: white; border-radius: 20px; box-shadow: 0 4px 24px rgba(26,18,8,0.12); text-align: center; }
-        .bill-header { background: var(--dark); color: var(--gold); padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem; }
-        .bill-header h2 { font-family: 'Playfair Display', serif; font-size: 1.8rem; }
-        .bill-row { display: flex; justify-content: space-between; padding: 0.6rem 0; border-bottom: 1px dashed #e0d8cc; font-size: 0.95rem; }
-        .bill-total { display: flex; justify-content: space-between; padding: 1rem 0 0; font-weight: 800; font-size: 1.3rem; color: var(--rust); }
-        .success-icon { font-size: 4rem; margin-bottom: 1rem; }
-        .new-order-btn { background: var(--dark); color: var(--gold); border: none; padding: 1rem 2rem; border-radius: 12px; font-size: 1rem; font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif; margin-top: 1.5rem; transition: background 0.2s; }
-        .new-order-btn:hover { background: #2d1a08; }
-        .empty-cart { text-align: center; padding: 3rem 1rem; color: var(--muted); }
-        .empty-cart span { font-size: 3rem; display: block; margin-bottom: 1rem; }
-      `}</style>
 
+      {toast && <div className={`toast toast-${toast.type}`}>{toast.msg}</div>}
+
+      {/* NAV */}
       <nav className="nav">
-        <span className="nav-logo">🍽 The Chef's Track</span>
+        <div className="nav-brand">
+          <span className="nav-brand-name">The Chef's Track</span>
+          <span className="nav-brand-tagline">Fine Dining &amp; Culinary Arts</span>
+        </div>
         <div className="nav-links">
           <a href="/">Menu</a>
-          <Link href="/admin">Admin Panel</Link>
-          {step === 'menu' && (
-            <button className="cart-btn" onClick={() => setStep('cart')}>
-              🛒 Cart ({cart.length})
+          <Link href="/admin">Management</Link>
+          {step === 'menu' && cart.length > 0 && (
+            <button className="nav-cart-btn" onClick={() => setStep('cart')}>
+              View Order &nbsp;({cart.length})
             </button>
           )}
         </div>
       </nav>
 
+      {/* ── MENU ── */}
       {step === 'menu' && (
         <>
-          <div className="hero">
-            <h1>Welcome to<br /><span>The Chef's Track</span></h1>
-            <p>Fresh ingredients. Timeless recipes. Unforgettable experience.</p>
-          </div>
-          <main className="main">
+          {/* Hero */}
+          <section className="hero">
+            <div className="hero-img" style={{ backgroundImage: 'url(/food/hero.png)' }} />
+            <div className="hero-content">
+              <span className="hero-label">Est. 2024 — Culinary Excellence</span>
+              <h1 className="hero-title">
+                An <em>extraordinary</em><br />dining experience
+              </h1>
+              <p className="hero-desc">Seasonal ingredients &middot; Masterful technique &middot; Unforgettable flavour</p>
+              <button className="hero-cta" onClick={() => document.getElementById('menu-anchor').scrollIntoView({ behavior: 'smooth' })}>
+                Explore the Menu
+              </button>
+            </div>
+            <div className="hero-scroll">
+              <span>Scroll</span>
+              <div className="scroll-line" />
+            </div>
+          </section>
+
+          {/* Menu Grid */}
+          <section className="menu-section" id="menu-anchor">
+            <div className="section-header">
+              <span className="section-label">Curated Selection</span>
+              <h2 className="section-title">Our Menu</h2>
+              <div className="section-divider">
+                <div className="divider-line" />
+                <div className="divider-diamond" />
+                <div className="divider-line" />
+              </div>
+            </div>
+
             <div className="filters">
               {categories.map(c => (
-                <button key={c} className={`filter-btn ${filter === c ? 'active' : ''}`} onClick={() => setFilter(c)}>{c}</button>
+                <button key={c} className={`filter-btn${filter === c ? ' active' : ''}`} onClick={() => setFilter(c)}>{c}</button>
               ))}
             </div>
-            <div className="menu-grid">
-              {filtered.map(item => {
-                const emoji = item.item_type === 'Main Course' ? '🍔' : item.item_type === 'Appetizer' ? '🥗' : item.item_type === 'Dessert' ? '🍰' : '🍽';
-                const inCart = cart.filter(c => c.item_no === item.item_no).length;
-                return (
-                  <div key={item.item_no} className="menu-card">
-                    <div className="card-img" style={{ background: item.item_type === 'Dessert' ? '#fff3e0' : item.item_type === 'Appetizer' ? '#e8f5e9' : '#fce4e4' }}>
-                      {emoji}
-                    </div>
-                    <div className="card-body">
-                      <div className="card-type">{item.item_type}</div>
-                      <div className="card-name">{item.item_name}</div>
-                      <div className="card-footer">
-                        <span className="card-price">₹{item.item_price}</span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <span className={`stock-badge ${item.item_stock > 10 ? 'stock-ok' : item.item_stock > 0 ? 'stock-low' : 'stock-out'}`}>
-                            {item.item_stock > 0 ? `${item.item_stock} left` : 'Out'}
-                          </span>
-                          <button className="add-btn" onClick={() => addToCart(item)} disabled={item.item_stock <= 0}>+</button>
-                        </div>
-                      </div>
-                      {inCart > 0 && <div style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--sage)', fontWeight: 600 }}>✓ {inCart} in cart</div>}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </main>
 
-          {/* Floating cart button */}
+            {menuLoading ? (
+              <div className="skeleton-grid">
+                {[...Array(6)].map((_, i) => <div key={i} className="skeleton-card shimmer" />)}
+              </div>
+            ) : (
+              <div className="menu-grid">
+                {filtered.map(item => {
+                  const meta = getMeta(item.item_name);
+                  const avail = item.item_stock - cartCountFor(item.item_no);
+                  return (
+                    <div key={item.item_no} className="menu-card">
+                      <div className="card-image-wrap">
+                        <img src={meta.img} alt={item.item_name} />
+                        <span className="card-category-tag">{item.item_type}</span>
+                        <span className={`stock-tag ${avail > 10 ? 'stock-ok' : avail > 0 ? 'stock-low' : 'stock-out'}`}>
+                          {avail > 0 ? `${avail} Available` : 'Sold Out'}
+                        </span>
+                      </div>
+                      <div className="card-body">
+                        <h3 className="card-name">{item.item_name}</h3>
+                        <p className="card-desc">{meta.desc}</p>
+                        <div className="card-footer">
+                          <div className="card-price"><span>INR</span>&#8377;{item.item_price}</div>
+                          <button className="add-btn" onClick={() => addToCart(item)} disabled={avail <= 0}>
+                            {avail > 0 ? 'Add to Order' : 'Unavailable'}
+                          </button>
+                        </div>
+                        {cartCountFor(item.item_no) > 0 && (
+                          <div className="in-cart-label">{cartCountFor(item.item_no)} in your order</div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
           {cart.length > 0 && (
-            <div style={{ position: 'fixed', bottom: '2rem', right: '2rem', zIndex: 100 }}>
-              <button className="cart-btn" style={{ padding: '1rem 1.5rem', fontSize: '1rem', boxShadow: '0 4px 20px rgba(200,150,62,0.4)' }} onClick={() => setStep('cart')}>
-                🛒 {cart.length} items — ₹{cartTotal}
+            <div className="float-cart">
+              <button className="float-cart-btn" onClick={() => setStep('cart')}>
+                <span>View Order</span>
+                <div className="float-cart-count">{cart.length}</div>
+                <span>&#8377;{cartTotal}</span>
               </button>
             </div>
           )}
         </>
       )}
 
+      {/* ── CART ── */}
       {step === 'cart' && (
-        <div className="main">
-          <div className="checkout-container">
-            <h2>Your Order</h2>
+        <div className="page-container">
+          <div className="cart-container">
+            <h1 className="page-title">Your Order</h1>
+            <p className="page-subtitle">{cart.length} {cart.length === 1 ? 'item' : 'items'} selected</p>
             {cart.length === 0 ? (
-              <div className="empty-cart"><span>🛒</span>Your cart is empty</div>
+              <div className="empty-state">
+                <div className="empty-state-title">Your order is empty</div>
+                <div className="empty-state-sub">Return to the menu to make a selection</div>
+              </div>
             ) : (
               <>
-                <div className="order-summary">
-                  <h3>Items</h3>
+                <div className="order-lines">
                   {cart.map((item, idx) => (
-                    <div key={idx} className="summary-item">
-                      <span>{item.item_name} <button className="remove-btn" onClick={() => removeFromCart(idx)}>✕</button></span>
-                      <span>₹{item.item_price}</span>
+                    <div key={idx} className="order-line">
+                      <span className="order-line-name">{item.item_name}</span>
+                      <div className="order-line-right">
+                        <span className="order-line-price">&#8377;{item.item_price}</span>
+                        <button className="remove-btn" onClick={() => removeFromCart(idx)} title="Remove">&#10005;</button>
+                      </div>
                     </div>
                   ))}
-                  <div className="summary-total"><span>Subtotal</span><span>₹{cartTotal}</span></div>
                 </div>
-                <button className="checkout-btn" onClick={() => setStep('checkout')}>Proceed to Checkout →</button>
+                <div className="order-total">
+                  <span className="order-total-label">Subtotal</span>
+                  <span className="order-total-value">&#8377;{cartTotal}</span>
+                </div>
+                <button className="btn-primary" onClick={() => setStep('checkout')}>Proceed to Checkout</button>
               </>
             )}
-            <br /><br />
-            <button className="back-btn" onClick={() => setStep('menu')}>← Back to Menu</button>
+            <button className="btn-secondary" onClick={() => setStep('menu')}>Return to Menu</button>
           </div>
         </div>
       )}
 
+      {/* ── CHECKOUT ── */}
       {step === 'checkout' && (
-        <div className="main">
-          <div className="checkout-container">
-            <h2>Complete Your Order</h2>
-            <div className="order-summary">
-              <h3>Order Summary ({cart.length} items)</h3>
-              {cart.map((item, idx) => (
-                <div key={idx} className="summary-item">
-                  <span>{item.item_name}</span><span>₹{item.item_price}</span>
+        <div className="page-container">
+          <div className="cart-container">
+            <h1 className="page-title">Guest Details</h1>
+            <p className="page-subtitle">Complete your reservation</p>
+
+            <div className="form-section">
+              <div className="form-section-title">Personal Information</div>
+              <div className="form-group">
+                <label className="form-label">First Name *</label>
+                <input className={`form-input${errors.cust_fname ? ' err' : ''}`} value={form.cust_fname} onChange={e => setForm(f => ({ ...f, cust_fname: e.target.value }))} placeholder="Your first name" />
+                {errors.cust_fname && <div className="field-err">{errors.cust_fname}</div>}
+              </div>
+              <div className="form-group">
+                <label className="form-label">Last Name</label>
+                <input className="form-input" value={form.cust_lname} onChange={e => setForm(f => ({ ...f, cust_lname: e.target.value }))} placeholder="Your last name" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Contact Number * (10 digits)</label>
+                <input className={`form-input${errors.contact_no ? ' err' : ''}`} value={form.contact_no} onChange={e => setForm(f => ({ ...f, contact_no: e.target.value.replace(/\D/g, '').slice(0, 10) }))} placeholder="9XXXXXXXXX" inputMode="numeric" />
+                {errors.contact_no && <div className="field-err">{errors.contact_no}</div>}
+              </div>
+            </div>
+
+            <div className="form-section">
+              <div className="form-section-title">Service Preference</div>
+              <div className="form-group">
+                <label className="form-label">Attending Waiter *</label>
+                <select className={`form-select${errors.waiter_id ? ' err' : ''}`} value={form.waiter_id} onChange={e => setForm(f => ({ ...f, waiter_id: e.target.value }))}>
+                  <option value="">Select your waiter</option>
+                  {waiters.map(w => <option key={w.waiter_id} value={w.waiter_id}>{w.waiter_fname} {w.waiter_lname}</option>)}
+                </select>
+                {errors.waiter_id && <div className="field-err">{errors.waiter_id}</div>}
+              </div>
+            </div>
+
+            <div className="order-total">
+              <span className="order-total-label">Total ({cart.length} items)</span>
+              <span className="order-total-value">&#8377;{cartTotal}</span>
+            </div>
+            <button className="btn-primary" onClick={placeOrder} disabled={loading}>
+              {loading ? 'Processing...' : 'Confirm Order'}
+            </button>
+            <button className="btn-secondary" onClick={() => setStep('cart')}>Back to Order</button>
+          </div>
+        </div>
+      )}
+
+      {/* ── BILL ── */}
+      {step === 'bill' && bill && (
+        <div className="page-container">
+          <div className="bill-container">
+            <div className="bill-receipt">
+              <div className="bill-logo">The Chef's Track</div>
+              <div className="bill-meta">Order #{bill.ord_no} &nbsp;&middot;&nbsp; Bill #{bill.bill_no}</div>
+              <hr className="bill-divider" />
+              {bill.items?.map((item, i) => (
+                <div key={i} className="bill-row">
+                  <span>{item.item_name}</span>
+                  <span>&#8377;{item.item_price}</span>
                 </div>
               ))}
-              <div className="summary-total"><span>Total</span><span>₹{cartTotal}</span></div>
-            </div>
-            <div className="form-group">
-              <label>First Name *</label>
-              <input value={form.cust_fname} onChange={e => setForm(f => ({ ...f, cust_fname: e.target.value }))} placeholder="Your first name" />
-            </div>
-            <div className="form-group">
-              <label>Last Name</label>
-              <input value={form.cust_lname} onChange={e => setForm(f => ({ ...f, cust_lname: e.target.value }))} placeholder="Your last name" />
-            </div>
-            <div className="form-group">
-              <label>Contact Number *</label>
-              <input value={form.contact_no} onChange={e => setForm(f => ({ ...f, contact_no: e.target.value }))} placeholder="10-digit number" />
-            </div>
-            <div className="form-group">
-              <label>Assign Waiter *</label>
-              <select value={form.waiter_id} onChange={e => setForm(f => ({ ...f, waiter_id: e.target.value }))}>
-                <option value="">Select a waiter</option>
-                {waiters.map(w => <option key={w.waiter_id} value={w.waiter_id}>{w.waiter_fname} {w.waiter_lname}</option>)}
-              </select>
-            </div>
-            <div>
-              <button className="back-btn" onClick={() => setStep('cart')}>← Back</button>
-              <button className="checkout-btn" style={{ width: 'auto', padding: '0.75rem 2rem' }} onClick={placeOrder} disabled={loading}>
-                {loading ? 'Processing...' : '✓ Place Order'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {step === 'bill' && bill && (
-        <div className="main">
-          <div className="bill-container">
-            <div className="success-icon">🎉</div>
-            <div className="bill-header">
-              <h2>The Chef's Track</h2>
-              <p style={{ marginTop: '0.5rem', opacity: 0.8, fontSize: '0.9rem' }}>Bill #{bill.bill_no} • Order #{bill.ord_no}</p>
-            </div>
-            {bill.items?.map((item, i) => (
-              <div key={i} className="bill-row">
-                <span>{item.item_name}</span><span>₹{item.item_price}</span>
+              <hr className="bill-divider" />
+              <div className="bill-row meta"><span>Subtotal</span><span>&#8377;{bill.tot_price}</span></div>
+              {bill.discount > 0 && (
+                <div className="bill-row meta"><span>Discount ({bill.discount}%)</span><span>&#8377;{(bill.tot_price * bill.discount / 100).toFixed(2)}</span></div>
+              )}
+              <div className="bill-row meta"><span>GST (5%)</span><span>&#8377;{((bill.tot_price - bill.tot_price * (bill.discount || 0) / 100) * 0.05).toFixed(2)}</span></div>
+              <div className="bill-total-row">
+                <span className="bill-total-label">Net Payable</span>
+                <span className="bill-total-value">&#8377;{Number(bill.net_payable).toFixed(2)}</span>
               </div>
-            ))}
-            <div className="bill-row"><span>Subtotal</span><span>₹{bill.tot_price}</span></div>
-            <div className="bill-row"><span>Tax (5%)</span><span>₹{(bill.tot_price * 0.05).toFixed(2)}</span></div>
-            <div className="bill-row"><span>Discount</span><span>-₹{(bill.tot_price * bill.discount / 100).toFixed(2)}</span></div>
-            <div className="bill-total"><span>Net Payable</span><span>₹{Number(bill.net_payable).toFixed(2)}</span></div>
-            <p style={{ marginTop: '1.5rem', color: 'var(--muted)', fontSize: '0.9rem' }}>Thank you for dining with us! 🙏</p>
-            <button className="new-order-btn" onClick={() => { setCart([]); setStep('menu'); setBill(null); setForm({ cust_fname: '', cust_lname: '', contact_no: '', waiter_id: '' }); }}>
-              New Order
-            </button>
+              <div className="bill-thank">Thank you for dining with us</div>
+            </div>
+            <br />
+            <button className="btn-primary" onClick={reset}>Begin a New Order</button>
           </div>
         </div>
       )}

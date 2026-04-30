@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 
-const ADMIN_PASSWORD = 'admin123';
+// NOTE: In production, replace this with a server-side auth check (e.g. NextAuth)
+const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'admin123';
 
 export default function Admin() {
   const [auth, setAuth] = useState(false);
@@ -19,6 +20,14 @@ export default function Admin() {
   const [newChef, setNewChef] = useState({ chef_fname: '', chef_lname: '', chef_type: 'Head_Chef' });
   const [editItem, setEditItem] = useState(null);
   const [discountOrd, setDiscountOrd] = useState({});
+  const [adminError, setAdminError] = useState('');
+  const [adminSuccess, setAdminSuccess] = useState('');
+
+  const notify = (msg, type = 'success') => {
+    if (type === 'success') { setAdminSuccess(msg); setAdminError(''); }
+    else { setAdminError(msg); setAdminSuccess(''); }
+    setTimeout(() => { setAdminSuccess(''); setAdminError(''); }, 3500);
+  };
 
   const loadAll = () => {
     fetch('/api/menu').then(r => r.json()).then(setMenu);
@@ -39,45 +48,73 @@ export default function Admin() {
   };
 
   const addMenuItem = async () => {
-    await fetch('/api/menu', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newItem) });
+    if (!newItem.item_name.trim()) { notify('Item name is required', 'error'); return; }
+    const price = parseFloat(newItem.item_price);
+    if (!newItem.item_price || isNaN(price) || price <= 0) { notify('A valid price is required', 'error'); return; }
+    const stock = parseInt(newItem.item_stock, 10);
+    if (isNaN(stock) || stock < 0) { notify('Stock must be 0 or more', 'error'); return; }
+    const res = await fetch('/api/menu', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newItem) });
+    const data = await res.json();
+    if (!res.ok || data.error) { notify(data.error || 'Failed to add item', 'error'); return; }
     setNewItem({ item_name: '', item_type: 'Main Course', item_price: '', item_stock: '' });
+    notify('Menu item added successfully');
     loadAll();
   };
 
   const deleteMenuItem = async (item_no) => {
     if (!confirm('Delete this item?')) return;
-    await fetch('/api/menu', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ item_no }) });
+    const res = await fetch('/api/menu', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ item_no }) });
+    const data = await res.json();
+    if (!res.ok || data.error) { notify(data.error || 'Failed to delete item', 'error'); return; }
+    notify('Item deleted');
     loadAll();
   };
 
   const saveEdit = async () => {
-    await fetch('/api/menu', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(editItem) });
+    if (!editItem.item_name.trim()) { notify('Item name is required', 'error'); return; }
+    const price = parseFloat(editItem.item_price);
+    if (isNaN(price) || price <= 0) { notify('A valid price is required', 'error'); return; }
+    const res = await fetch('/api/menu', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(editItem) });
+    const data = await res.json();
+    if (!res.ok || data.error) { notify(data.error || 'Failed to update item', 'error'); return; }
     setEditItem(null);
+    notify('Item updated successfully');
     loadAll();
   };
 
   const addWaiter = async () => {
-    await fetch('/api/staff?type=waiters', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newWaiter) });
+    if (!newWaiter.waiter_fname.trim()) { notify('Waiter first name is required', 'error'); return; }
+    const res = await fetch('/api/staff?type=waiters', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newWaiter) });
+    const data = await res.json();
+    if (!res.ok || data.error) { notify(data.error || 'Failed to add waiter', 'error'); return; }
     setNewWaiter({ waiter_fname: '', waiter_lname: '' });
+    notify('Waiter added successfully');
     loadAll();
   };
 
   const addChef = async () => {
-    await fetch('/api/staff?type=chefs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newChef) });
+    if (!newChef.chef_fname.trim()) { notify('Chef first name is required', 'error'); return; }
+    const res = await fetch('/api/staff?type=chefs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newChef) });
+    const data = await res.json();
+    if (!res.ok || data.error) { notify(data.error || 'Failed to add chef', 'error'); return; }
     setNewChef({ chef_fname: '', chef_lname: '', chef_type: 'Head_Chef' });
+    notify('Chef added successfully');
     loadAll();
   };
 
   const generateBill = async (ord_no) => {
-    const disc = discountOrd[ord_no] || 0;
-    await fetch('/api/bills', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ord_no, discount: disc }) });
+    const disc = parseFloat(discountOrd[ord_no] || 0);
+    if (isNaN(disc) || disc < 0 || disc > 100) { notify('Discount must be 0–100', 'error'); return; }
+    const res = await fetch('/api/bills', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ord_no, discount: disc }) });
+    const data = await res.json();
+    if (!res.ok || data.error) { notify(data.error || 'Failed to generate bill', 'error'); return; }
+    notify(`Bill #${data.bill_no} generated — Net Payable: ₹${Number(data.net_payable).toFixed(2)}`);
     loadAll();
   };
 
   if (!auth) return (
     <>
       <Head><title>Admin Login — The Chef's Track</title>
-        <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
       </Head>
       <style>{`
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -92,24 +129,23 @@ export default function Admin() {
         .back-link { display: block; margin-top: 1rem; color: #c8963e; text-decoration: none; font-size: 0.9rem; }
       `}</style>
       <div className="login-box">
-        <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🔐</div>
+        <div style={{ fontSize: '3rem', marginBottom: '1rem' }}></div>
         <h1>Admin Panel</h1>
         <p>The Chef's Track Management</p>
-        <input type="password" placeholder="Enter admin password" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && password === ADMIN_PASSWORD && setAuth(true)} />
+        <input type="password" placeholder="Enter admin password" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && (password === ADMIN_PASSWORD ? setAuth(true) : alert('Wrong password!'))} />
         <button onClick={() => password === ADMIN_PASSWORD ? setAuth(true) : alert('Wrong password!')}>Login</button>
-        <p className="hint">Hint: admin123</p>
         <Link href="/" className="back-link">← Back to Restaurant</Link>
       </div>
     </>
   );
 
   const tabs = [
-    { id: 'dashboard', label: '📊 Dashboard' },
-    { id: 'menu', label: '🍽 Menu' },
-    { id: 'orders', label: '📋 Orders' },
-    { id: 'bills', label: '💳 Bills' },
-    { id: 'staff', label: '👥 Staff' },
-    { id: 'customers', label: '👤 Customers' },
+    { id: 'dashboard', label: 'Dashboard' },
+    { id: 'menu', label: 'Menu' },
+    { id: 'orders', label: 'Orders' },
+    { id: 'bills', label: 'Bills' },
+    { id: 'staff', label: 'Staff' },
+    { id: 'customers', label: 'Customers' },
   ];
 
   return (
@@ -173,6 +209,16 @@ export default function Admin() {
         .view-site-btn { background: rgba(200,150,62,0.1); color: var(--gold); border: 1px solid rgba(200,150,62,0.3); padding: 0.5rem 1rem; border-radius: 8px; text-decoration: none; font-size: 0.85rem; font-weight: 600; }
       `}</style>
 
+      {adminError && (
+        <div style={{ position: 'fixed', top: '1rem', right: '1rem', background: '#c62828', color: 'white', padding: '0.75rem 1.25rem', borderRadius: '10px', zIndex: 999, fontWeight: 600, fontSize: '0.9rem', maxWidth: '340px' }}>
+          ⚠ {adminError}
+        </div>
+      )}
+      {adminSuccess && (
+        <div style={{ position: 'fixed', top: '1rem', right: '1rem', background: '#2e7d32', color: 'white', padding: '0.75rem 1.25rem', borderRadius: '10px', zIndex: 999, fontWeight: 600, fontSize: '0.9rem', maxWidth: '340px' }}>
+          ✓ {adminSuccess}
+        </div>
+      )}
       <div className="layout">
         <aside className="sidebar">
           <div className="sidebar-logo">
@@ -199,12 +245,12 @@ export default function Admin() {
                 <p>Restaurant overview at a glance</p>
               </div>
               <div className="stats-grid">
-                <div className="stat-card"><div className="stat-icon">📋</div><div className="stat-value">{stats.totalOrders}</div><div className="stat-label">Total Orders</div></div>
-                <div className="stat-card"><div className="stat-icon">💰</div><div className="stat-value">₹{stats.totalRevenue.toFixed(0)}</div><div className="stat-label">Total Revenue</div></div>
-                <div className="stat-card"><div className="stat-icon">🍽</div><div className="stat-value">{stats.menuItems}</div><div className="stat-label">Menu Items</div></div>
-                <div className="stat-card"><div className="stat-icon">🔥</div><div className="stat-value">{stats.activeOrders}</div><div className="stat-label">Active Orders</div></div>
-                <div className="stat-card"><div className="stat-icon">👥</div><div className="stat-value">{customers.length}</div><div className="stat-label">Customers</div></div>
-                <div className="stat-card"><div className="stat-icon">🧾</div><div className="stat-value">{bills.length}</div><div className="stat-label">Bills Generated</div></div>
+                <div className="stat-card"><div className="stat-icon"></div><div className="stat-value">{stats.totalOrders}</div><div className="stat-label">Total Orders</div></div>
+                <div className="stat-card"><div className="stat-icon"></div><div className="stat-value">₹{stats.totalRevenue.toFixed(0)}</div><div className="stat-label">Total Revenue</div></div>
+                <div className="stat-card"><div className="stat-icon"></div><div className="stat-value">{stats.menuItems}</div><div className="stat-label">Menu Items</div></div>
+                <div className="stat-card"><div className="stat-icon"></div><div className="stat-value">{stats.activeOrders}</div><div className="stat-label">Active Orders</div></div>
+                <div className="stat-card"><div className="stat-icon"></div><div className="stat-value">{customers.length}</div><div className="stat-label">Customers</div></div>
+                <div className="stat-card"><div className="stat-icon"></div><div className="stat-value">{bills.length}</div><div className="stat-label">Bills Generated</div></div>
               </div>
               <div className="card">
                 <h2>Recent Orders</h2>
