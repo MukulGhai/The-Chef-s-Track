@@ -1,4 +1,4 @@
-# 🍽 The Chef's Track — Restaurant Management System
+# 🍽 The Chef's Track — Fine Dining Indian Restaurant Management System
 
 **DBMS Project (UCS310) | Thapar Institute of Engineering & Technology**
 
@@ -6,55 +6,55 @@
 
 ---
 
-## 🚀 Live Demo
-> Deploy link will go here after deployment
+## 🌟 Overview
+The Chef's Track has been completely redesigned into a **luxury 5-star fine dining Indian restaurant experience**. The system features a highly polished customer-facing ordering interface with cinematic food photography and a robust backend to handle full restaurant operations.
 
 ## 📋 Features
-- **Customer Side**: Browse menu by category, add items to cart, place orders, get bills
-- **Admin Panel**: Dashboard with stats, menu CRUD, order management, bill generation with discounts, staff & customer management
-- **Backend Logic**: All PL/SQL logic (triggers, procedures, functions) recreated as API routes
+- **Customer Side (Luxury UI)**: Browse a curated menu of authentic Indian dishes (Appetizers, Main Course, Breads, Desserts, Beverages), real-time stock-aware cart, place orders, and view detailed dynamic bills.
+- **Admin Panel**: Secure dashboard with real-time stats, comprehensive menu CRUD, order management, dynamic bill generation (with taxes and discounts), staff and customer tracking.
+- **Backend Logic**: All PL/SQL logic (triggers, procedures, functions) engineered as robust Next.js API routes with strict validation, concurrency controls, and transactional integrity.
 
 ## 🛠 Tech Stack
 | Layer | Technology |
 |-------|-----------|
-| Frontend | Next.js 14, React 18 |
-| Backend | Next.js API Routes |
-| Database | SQLite (better-sqlite3) |
-| Deployment | Render (recommended) or Railway |
+| **Frontend** | Next.js 16, React 18, Custom CSS Architecture |
+| **Design System** | Cormorant Garamond & Montserrat Typography |
+| **Backend** | Next.js API Routes (Serverless-ready) |
+| **Database** | `sql.js` (In-memory SQLite compiled to WebAssembly) |
 
 ## 📂 Project Structure
 ```
-├── lib/db.js              # Database init + seeding
+├── lib/db.js              # Database init, race-condition locks & full Indian menu seeding
 ├── pages/
-│   ├── index.js           # Customer menu & ordering
-│   ├── admin.js           # Admin panel (password: admin123)
+│   ├── index.js           # Customer menu & checkout flow (Redesigned)
+│   ├── admin.js           # Admin management dashboard
+│   ├── _app.js            # Global app layout
+│   ├── _document.js       # Document-level font loading
 │   └── api/
-│       ├── menu.js        # CRUD for food items
-│       ├── orders.js      # Place & manage orders
-│       ├── bills.js       # Generate bills (with tax & discount)
+│       ├── menu.js        # CRUD operations for menu items
+│       ├── orders.js      # Place & manage orders, stock deduction
+│       ├── bills.js       # Generate bills with discount/tax logic
 │       └── staff.js       # Waiters, chefs, customers, tips
+├── public/food/           # High-quality AI-generated dish photography
+└── styles/globals.css     # Luxury CSS design system
 ```
 
 ## ⚙️ Run Locally
 ```bash
+# Install dependencies
 npm install
-npm run dev
-# Open http://localhost:3000
-```
 
-## 🌐 Deploy on Render (Recommended — Free)
-1. Push this repo to GitHub
-2. Go to [render.com](https://render.com) → New → Web Service
-3. Connect your GitHub repo
-4. Set:
-   - **Build Command**: `npm install && npm run build`
-   - **Start Command**: `npm start`
-   - **Environment**: Node
-5. Click Deploy!
+# Start the development server
+npm run dev
+
+# The app will be available at http://localhost:3000
+```
 
 ## 🗄 Database Schema
 Matches the original Oracle SQL schema from the project report:
 - `waiter`, `customer`, `chef`, `food`, `prepares`, `ord`, `contains`, `bill`, `tips`
 
-## 🔐 Admin Login
-Password: `admin123`
+## 🔐 Admin Access
+The admin panel is accessible at `/admin`.
+The password is set via environment variable `NEXT_PUBLIC_ADMIN_PASSWORD`.
+If not set, the default local fallback is `admin123`.
