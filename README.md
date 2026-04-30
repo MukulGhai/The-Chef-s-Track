@@ -2,7 +2,7 @@
 
 **DBMS Project (UCS310) | Thapar Institute of Engineering & Technology**
 
-**Team:** Aditya Pratap (102103064) | Anubhav Sood (102103075) | Harsh Arora (102103085) | Deepanshu Batheja (102283017)
+**Team:** Sabyasachi Chaturvedi (102303458) | Saarthi Arora (102303457) | Mukul Ghai (102303463)
 
 ---
 
