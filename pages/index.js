@@ -54,6 +54,9 @@ export default function Home() {
   const [filter, setFilter] = useState('All');
   const [errors, setErrors] = useState({});
   const [toast, setToast] = useState(null);
+  const [tipAmount, setTipAmount] = useState('');
+  const [tipSent, setTipSent] = useState(false);
+  const [orderId, setOrderId] = useState(null);
 
   useEffect(() => {
     Promise.all([
@@ -100,17 +103,33 @@ export default function Home() {
       const r1 = await fetch('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, items: cart.map(i => i.item_no) }) });
       const d1 = await r1.json();
       if (!r1.ok) { showToast(d1.error || 'Order failed', 'error'); return; }
+      setOrderId(d1.ord_no);
       const r2 = await fetch('/api/bills', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ord_no: d1.ord_no, discount: 0 }) });
       const d2 = await r2.json();
       if (!r2.ok) { showToast(d2.error || 'Billing failed', 'error'); return; }
-      setBill({ ...d2, ord_no: d1.ord_no });
+      setBill({ ...d2, ord_no: d1.ord_no, cust_id: d1.cust_id });
       setStep('bill');
     } catch { showToast('Network error. Please try again.', 'error'); }
     finally { setLoading(false); }
   };
 
+  const sendTip = async () => {
+    const amt = parseFloat(tipAmount);
+    if (isNaN(amt) || amt <= 0) { showToast('Enter a valid tip amount', 'error'); return; }
+    try {
+      const res = await fetch('/api/staff?type=tips', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ waiter_id: form.waiter_id, cust_id: bill.cust_id, tips: amt })
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) { showToast(data.error || 'Failed to send tip', 'error'); return; }
+      setTipSent(true);
+      showToast(`₹${amt} tip sent! Thank you for your generosity.`);
+    } catch { showToast('Failed to send tip', 'error'); }
+  };
+
   const reset = () => {
-    setCart([]); setStep('menu'); setBill(null);
+    setCart([]); setStep('menu'); setBill(null); setTipAmount(''); setTipSent(false); setOrderId(null);
     setForm({ cust_fname: '', cust_lname: '', contact_no: '', waiter_id: '' });
     fetch('/api/menu').then(r => r.json()).then(setMenu);
   };
@@ -343,6 +362,27 @@ export default function Home() {
                 <span className="bill-total-value">&#8377;{Number(bill.net_payable).toFixed(2)}</span>
               </div>
               <div className="bill-thank">Thank you for dining with us</div>
+            </div>
+            <div className="tip-section">
+              <div className="tip-title">Show Your Appreciation</div>
+              <p className="tip-desc">Leave a tip for your waiter to brighten their day</p>
+              {!tipSent ? (
+                <div className="tip-form">
+                  <div className="tip-presets">
+                    {[50, 100, 200, 500].map(amt => (
+                      <button key={amt} className={`tip-preset-btn${tipAmount === String(amt) ? ' active' : ''}`}
+                        onClick={() => setTipAmount(String(amt))}>₹{amt}</button>
+                    ))}
+                  </div>
+                  <div className="tip-custom">
+                    <input className="tip-custom-input" type="number" min="1" placeholder="Custom amount"
+                      value={tipAmount} onChange={e => setTipAmount(e.target.value)} />
+                    <button className="tip-send-btn" onClick={sendTip} disabled={!tipAmount}>Send Tip</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="tip-thanks">✓ Tip sent! Your waiter appreciates it.</div>
+              )}
             </div>
             <br />
             <button className="btn-primary" onClick={reset}>Begin a New Order</button>

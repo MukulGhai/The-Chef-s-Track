@@ -460,6 +460,63 @@ body {
 .toast-success { background: var(--charcoal); color: var(--gold); }
 .toast-error { background: #2d1010; color: #e57373; }
 
+/* ── TIP SECTION ── */
+.tip-section {
+  background: var(--white); padding: 2.5rem; margin-top: 1.5rem;
+  border: 1px solid var(--border); text-align: center;
+}
+.tip-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.4rem; font-weight: 600; color: var(--charcoal);
+  margin-bottom: 0.4rem;
+}
+.tip-desc {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.6rem; letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 1.5rem;
+}
+.tip-presets {
+  display: flex; gap: 0.75rem; justify-content: center; margin-bottom: 1rem;
+}
+.tip-preset-btn {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.7rem; font-weight: 600; letter-spacing: 1px;
+  padding: 0.6rem 1.2rem; border: 1px solid var(--border);
+  background: transparent; color: var(--charcoal);
+  cursor: pointer; transition: all 0.25s;
+}
+.tip-preset-btn:hover, .tip-preset-btn.active {
+  background: var(--charcoal); color: var(--gold); border-color: var(--charcoal);
+}
+.tip-custom {
+  display: flex; gap: 0.75rem; justify-content: center; align-items: center;
+}
+.tip-custom-input {
+  width: 160px; padding: 0.7rem 1rem;
+  border: 1px solid var(--border); background: transparent;
+  font-family: 'Cormorant Garamond', serif; font-size: 1.1rem;
+  color: var(--charcoal); outline: none; text-align: center;
+}
+.tip-custom-input:focus { border-color: var(--charcoal); }
+.tip-send-btn {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.6rem; letter-spacing: 2px; text-transform: uppercase; font-weight: 600;
+  background: var(--gold); color: var(--charcoal);
+  border: none; padding: 0.7rem 1.5rem; cursor: pointer;
+  transition: all 0.25s;
+}
+.tip-send-btn:hover:not(:disabled) { background: var(--charcoal); color: var(--gold); }
+.tip-send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.tip-thanks {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.75rem; letter-spacing: 1.5px; color: #4a7c59;
+  padding: 1rem; background: #f0f8f0;
+}
+
+/* ── SMOOTH TRANSITIONS ── */
+.page-container { animation: pageFadeIn 0.4s ease; }
+@keyframes pageFadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
 /* ── RESPONSIVE ── */
 @media (max-width: 768px) {
   .nav { padding: 1.25rem 1.5rem; }

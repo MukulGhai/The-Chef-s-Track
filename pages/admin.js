@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 
@@ -20,6 +20,7 @@ export default function Admin() {
   const [newChef, setNewChef] = useState({ chef_fname: '', chef_lname: '', chef_type: 'Head_Chef' });
   const [editItem, setEditItem] = useState(null);
   const [discountOrd, setDiscountOrd] = useState({});
+  const [tipOrd, setTipOrd] = useState({});
   const [adminError, setAdminError] = useState('');
   const [adminSuccess, setAdminSuccess] = useState('');
 
@@ -29,16 +30,21 @@ export default function Admin() {
     setTimeout(() => { setAdminSuccess(''); setAdminError(''); }, 3500);
   };
 
-  const loadAll = () => {
-    fetch('/api/menu').then(r => r.json()).then(setMenu);
-    fetch('/api/orders').then(r => r.json()).then(setOrders);
-    fetch('/api/staff?type=waiters').then(r => r.json()).then(setWaiters);
-    fetch('/api/staff?type=chefs').then(r => r.json()).then(setChefs);
-    fetch('/api/staff?type=customers').then(r => r.json()).then(setCustomers);
-    fetch('/api/bills').then(r => r.json()).then(setBills);
-  };
+  const loadAll = useCallback(() => {
+    fetch('/api/menu').then(r => r.json()).then(setMenu).catch(() => { });
+    fetch('/api/orders').then(r => r.json()).then(setOrders).catch(() => { });
+    fetch('/api/staff?type=waiters').then(r => r.json()).then(setWaiters).catch(() => { });
+    fetch('/api/staff?type=chefs').then(r => r.json()).then(setChefs).catch(() => { });
+    fetch('/api/staff?type=customers').then(r => r.json()).then(setCustomers).catch(() => { });
+    fetch('/api/bills').then(r => r.json()).then(setBills).catch(() => { });
+  }, []);
 
-  useEffect(() => { if (auth) loadAll(); }, [auth]);
+  useEffect(() => {
+    if (!auth) return;
+    loadAll();
+    const interval = setInterval(loadAll, 3000);
+    return () => clearInterval(interval);
+  }, [auth, loadAll]);
 
   const stats = {
     totalOrders: orders.length,
@@ -112,6 +118,22 @@ export default function Admin() {
     loadAll();
   };
 
+  const giveTip = async (ord_no) => {
+    const amt = parseFloat(tipOrd[ord_no] || 0);
+    if (isNaN(amt) || amt <= 0) { notify('Enter a valid tip amount', 'error'); return; }
+    const order = orders.find(o => o.ord_no === ord_no);
+    if (!order) { notify('Order not found', 'error'); return; }
+    const res = await fetch('/api/staff?type=tips', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ waiter_id: order.waiter_id, cust_id: order.cust_id, tips: amt })
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) { notify(data.error || 'Failed to add tip', 'error'); return; }
+    setTipOrd(t => ({ ...t, [ord_no]: '' }));
+    notify(`₹${amt} tip recorded for waiter`);
+    loadAll();
+  };
+
   if (!auth) return (
     <>
       <Head><title>Admin Login — The Chef's Track</title>
@@ -157,6 +179,19 @@ export default function Admin() {
       <style>{`
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         :root { --dark: #1a1208; --gold: #c8963e; --cream: #faf6f0; --text: #2d2010; --muted: #8a7a65; --rust: #8b3a1e; }
+        .main-content > * { animation: adminFadeIn 0.3s ease; }
+        @keyframes adminFadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .stat-card { transition: transform 0.2s, box-shadow 0.2s; }
+        .stat-card:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,0.1); }
+        .tip-row { display: flex; gap: 0.4rem; align-items: center; }
+        .tip-input { width: 70px; padding: 0.3rem 0.5rem; border: 1.5px solid #e0d8cc; border-radius: 6px; font-family: 'DM Sans', sans-serif; font-size: 0.85rem; }
+        .btn-tip { background: #fff3e0; color: #e65100; padding: 0.35rem 0.7rem; border-radius: 6px; border: none; font-size: 0.75rem; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+        .btn-tip:hover { background: #ffe0b2; }
+        .revenue-banner { background: linear-gradient(135deg, #1a1208, #2d2010); color: var(--gold); border-radius: 16px; padding: 1.5rem 2rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; }
+        .revenue-banner .rev-label { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; opacity: 0.7; }
+        .revenue-banner .rev-value { font-family: 'Playfair Display', serif; font-size: 2.5rem; font-weight: 800; }
+        .revenue-banner .rev-tips { text-align: right; }
+        .revenue-banner .rev-tips-val { font-family: 'Playfair Display', serif; font-size: 1.5rem; font-weight: 800; }
         body { font-family: 'DM Sans', sans-serif; background: #f4f0ea; min-height: 100vh; }
         .layout { display: flex; min-height: 100vh; }
         .sidebar { width: 240px; background: var(--dark); color: white; padding: 1.5rem 0; display: flex; flex-direction: column; position: fixed; top: 0; bottom: 0; left: 0; }
@@ -244,13 +279,17 @@ export default function Admin() {
                 <h1>Dashboard</h1>
                 <p>Restaurant overview at a glance</p>
               </div>
+              <div className="revenue-banner">
+                <div><div className="rev-label">Total Revenue</div><div className="rev-value">₹{stats.totalRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div></div>
+                <div className="rev-tips"><div className="rev-label">Total Tips</div><div className="rev-tips-val">₹{waiters.reduce((s, w) => s + (w.total_tips || 0), 0).toLocaleString('en-IN')}</div></div>
+              </div>
               <div className="stats-grid">
                 <div className="stat-card"><div className="stat-icon"></div><div className="stat-value">{stats.totalOrders}</div><div className="stat-label">Total Orders</div></div>
-                <div className="stat-card"><div className="stat-icon"></div><div className="stat-value">₹{stats.totalRevenue.toFixed(0)}</div><div className="stat-label">Total Revenue</div></div>
                 <div className="stat-card"><div className="stat-icon"></div><div className="stat-value">{stats.menuItems}</div><div className="stat-label">Menu Items</div></div>
                 <div className="stat-card"><div className="stat-icon"></div><div className="stat-value">{stats.activeOrders}</div><div className="stat-label">Active Orders</div></div>
                 <div className="stat-card"><div className="stat-icon"></div><div className="stat-value">{customers.length}</div><div className="stat-label">Customers</div></div>
                 <div className="stat-card"><div className="stat-icon"></div><div className="stat-value">{bills.length}</div><div className="stat-label">Bills Generated</div></div>
+                <div className="stat-card"><div className="stat-icon"></div><div className="stat-value">{waiters.length + chefs.length}</div><div className="stat-label">Staff Members</div></div>
               </div>
               <div className="card">
                 <h2>Recent Orders</h2>
@@ -324,7 +363,7 @@ export default function Admin() {
               <div className="card">
                 <h2>All Orders ({orders.length})</h2>
                 <table>
-                  <thead><tr><th>Order #</th><th>Customer</th><th>Waiter</th><th>Date</th><th>Items</th><th>Status</th><th>Discount %</th><th>Action</th></tr></thead>
+                  <thead><tr><th>Order #</th><th>Customer</th><th>Waiter</th><th>Date</th><th>Items</th><th>Status</th><th>Discount %</th><th>Action / Tip</th></tr></thead>
                   <tbody>
                     {orders.map(o => (
                       <tr key={o.ord_no}>
@@ -345,7 +384,17 @@ export default function Admin() {
                           {o.status === 'active' && (
                             <button className="action-btn btn-bill" onClick={() => generateBill(o.ord_no)}>Generate Bill</button>
                           )}
-                          {o.status === 'billed' && <span style={{ color: '#888', fontSize: '0.8rem' }}>✓ Billed</span>}
+                          {o.status === 'billed' && (
+                            <div>
+                              <span style={{ color: '#2e7d32', fontSize: '0.8rem', display: 'block', marginBottom: '0.3rem' }}>✓ Billed</span>
+                              <div className="tip-row">
+                                <input className="tip-input" type="number" min="0" placeholder="₹ Tip"
+                                  value={tipOrd[o.ord_no] || ''}
+                                  onChange={e => setTipOrd(t => ({ ...t, [o.ord_no]: e.target.value }))} />
+                                <button className="btn-tip" onClick={() => giveTip(o.ord_no)}>Give Tip</button>
+                              </div>
+                            </div>
+                          )}
                         </td>
                       </tr>
                     ))}
