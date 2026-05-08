@@ -2,45 +2,21 @@ import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 
-// Menu item descriptions & image mapping
-const ITEM_META = {
-  // Appetizers
-  'Samosa':           { desc: 'Hand-folded pastry shells filled with spiced potato and green peas, served with house-made mint chutney and aged tamarind reduction.', img: '/food/samosa.png' },
-  'Paneer Tikka':     { desc: 'Farm-fresh paneer marinated in hung curd and aromatic spices, char-grilled in our tandoor with seasonal bell peppers and onion petals.', img: '/food/paneer-tikka.png' },
-  'Chicken Tikka':    { desc: 'Tender free-range chicken marinated for 12 hours in a saffron and yogurt blend, kissed by the tandoor for a smoky, golden finish.', img: '/food/chicken-biryani.png' },
-  'Hara Bhara Kebab': { desc: 'Delicate green patties of spinach, green peas and fresh herbs, pan-seared until golden, served with a cooling cucumber raita.', img: '/food/paneer-tikka.png' },
-  'Dahi Puri':        { desc: 'Crisp semolina shells filled with spiced potato, crowned with chilled sweetened yogurt, tamarind, and a dusting of chaat masala.', img: '/food/samosa.png' },
-  // Main Course
-  'Butter Chicken':        { desc: 'Succulent tandoor-smoked chicken in a velvety tomato and cream sauce, slow-reduced with Kashmiri spices and finished with cultured butter.', img: '/food/butter-chicken.png' },
-  'Paneer Butter Masala':  { desc: 'Soft cottage cheese cubes simmered in a rich, aromatic tomato-cashew gravy with cream and a touch of dried fenugreek.', img: '/food/paneer-butter-masala.png' },
-  'Dal Makhani':           { desc: 'Whole black lentils slow-cooked over 24 hours on a wood fire with aged butter, cream and a whisper of asafoetida.', img: '/food/dal-makhani.png' },
-  'Palak Paneer':          { desc: 'Baby spinach blanched and puréed with fresh spices, embracing cubes of house-made paneer — a classic of the Punjab kitchen.', img: '/food/paneer-butter-masala.png' },
-  'Malai Kofta':           { desc: 'Delicate dumplings of paneer and potato in a saffron-laced cream and tomato gravy, perfumed with cardamom and mace.', img: '/food/paneer-butter-masala.png' },
-  'Mutton Rogan Josh':     { desc: 'Slow-braised Kashmiri lamb in an aromatic blend of whole spices and dried cockscomb flower, a heritage recipe prepared with great care.', img: '/food/butter-chicken.png' },
-  'Chicken Biryani':       { desc: 'Long-grain Basmati rice layered with saffron-marinated chicken, slow-cooked dum-style in a sealed vessel with caramelised onions and whole spices.', img: '/food/chicken-biryani.png' },
-  'Veg Biryani':           { desc: 'Fragrant Basmati steamed with seasonal vegetables, rose water and pure saffron strands, finished with fried shallots and fresh mint.', img: '/food/chicken-biryani.png' },
-  'Fish Curry':            { desc: 'Coastal-style curry of fresh catch simmered in a coconut milk and tamarind base with mustard seeds, curry leaf and green chili.', img: '/food/butter-chicken.png' },
-  'Lamb Korma':            { desc: 'Tender slow-braised lamb shoulder in a Mughal-inspired korma of cashew, cream and rosewater — a dish of remarkable refinement.', img: '/food/butter-chicken.png' },
-  // Bread
-  'Garlic Naan':      { desc: 'Leavened bread baked against the walls of our clay tandoor, brushed with cultured garlic butter and hand-torn fresh coriander.', img: '/food/garlic-naan.png' },
-  'Tandoori Roti':    { desc: 'Whole wheat flatbread, hand-rolled and baked in the tandoor — the perfect companion for any curry on our menu.', img: '/food/garlic-naan.png' },
-  'Stuffed Paratha':  { desc: 'Layered whole wheat bread filled with seasoned potato and paneer, cooked on a griddle with pure desi ghee until crisp and golden.', img: '/food/garlic-naan.png' },
-  'Peshwari Naan':    { desc: 'A soft, indulgent bread from the Afghan frontier, filled with a blend of almonds, coconut, sultanas and a hint of cardamom.', img: '/food/garlic-naan.png' },
-  // Desserts
-  'Gulab Jamun':    { desc: 'Milk-solid dumplings, gently fried to a deep amber, resting in a warm saffron and rose-water syrup, garnished with pistachio slivers.', img: '/food/gulab-jamun.png' },
-  'Rasgulla':       { desc: 'Cloud-soft chenna cheese spheres, poached in a delicate light sugar syrup infused with rose water — a Bengal confectionery treasure.', img: '/food/gulab-jamun.png' },
-  'Kulfi Falooda':  { desc: 'House-churned saffron and pistachio kulfi served over chilled vermicelli, rose syrup and basil seeds — a symphony of texture and flavour.', img: '/food/kulfi.png' },
-  'Kheer':          { desc: 'Slow-cooked rice pudding reduced in full-cream milk with green cardamom, saffron strands and topped with gold-dusted blanched almonds.', img: '/food/gulab-jamun.png' },
-  'Gajar Halwa':    { desc: 'Slow-simmered winter carrots in full-cream milk and pure desi ghee, sweetened with jaggery and crowned with cashews and raisins.', img: '/food/gulab-jamun.png' },
-  // Beverages
-  'Mango Lassi':       { desc: 'Hand-blended Alphonso mango with thick strained yogurt, a pinch of cardamom and pure saffron — the jewel of Indian refreshment.', img: '/food/mango-lassi.png' },
-  'Masala Chai':       { desc: 'A rich blend of Assam tea leaves simmered with fresh ginger, green cardamom, clove and cinnamon, served with full-cream milk.', img: '/food/mango-lassi.png' },
-  'Sweet Lassi':       { desc: 'Thick churned yogurt whisked with rose water and a touch of jaggery, garnished with dried rose petals and a pinch of cardamom.', img: '/food/mango-lassi.png' },
-  'Fresh Lime Soda':   { desc: 'Hand-pressed Himalayan lime with chilled sparkling water, served sweet, salted or with a house-made ginger and chili infusion.', img: '/food/mango-lassi.png' },
+// Fallback images for items that don't have a custom uploaded image
+const FALLBACK_IMAGES = {
+  'Appetizer': '/food/samosa.png',
+  'Main Course': '/food/butter-chicken.png',
+  'Bread': '/food/garlic-naan.png',
+  'Dessert': '/food/gulab-jamun.png',
+  'Beverage': '/food/mango-lassi.png',
 };
 
+const DEFAULT_IMAGE = '/food/hero.png';
+const DEFAULT_DESC = 'A masterfully prepared dish using only the finest seasonal ingredients, curated by our executive chef.';
 
-const DEFAULT_META = { desc: 'A masterfully prepared dish using only the finest seasonal ingredients, curated by our executive chef.', img: '/food/hero.png' };
+const getItemImage = (item) => item.item_image || FALLBACK_IMAGES[item.item_type] || DEFAULT_IMAGE;
+const getItemDesc = (item) => item.item_description || DEFAULT_DESC;
+
 
 export default function Home() {
   const [menu, setMenu] = useState([]);
@@ -134,8 +110,6 @@ export default function Home() {
     fetch('/api/menu').then(r => r.json()).then(setMenu);
   };
 
-  const getMeta = name => ITEM_META[name] || DEFAULT_META;
-
   return (
     <>
       <Head>
@@ -209,12 +183,11 @@ export default function Home() {
             ) : (
               <div className="menu-grid">
                 {filtered.map(item => {
-                  const meta = getMeta(item.item_name);
                   const avail = item.item_stock - cartCountFor(item.item_no);
                   return (
                     <div key={item.item_no} className="menu-card">
                       <div className="card-image-wrap">
-                        <img src={meta.img} alt={item.item_name} />
+                        <img src={getItemImage(item)} alt={item.item_name} />
                         <span className="card-category-tag">{item.item_type}</span>
                         <span className={`stock-tag ${avail > 10 ? 'stock-ok' : avail > 0 ? 'stock-low' : 'stock-out'}`}>
                           {avail > 0 ? `${avail} Available` : 'Sold Out'}
@@ -222,7 +195,7 @@ export default function Home() {
                       </div>
                       <div className="card-body">
                         <h3 className="card-name">{item.item_name}</h3>
-                        <p className="card-desc">{meta.desc}</p>
+                        <p className="card-desc">{getItemDesc(item)}</p>
                         <div className="card-footer">
                           <div className="card-price"><span>INR</span>&#8377;{item.item_price}</div>
                           <button className="add-btn" onClick={() => addToCart(item)} disabled={avail <= 0}>

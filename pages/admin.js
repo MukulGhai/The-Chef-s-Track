@@ -15,7 +15,10 @@ export default function Admin() {
   const [chefs, setChefs] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [bills, setBills] = useState([]);
-  const [newItem, setNewItem] = useState({ item_name: '', item_type: 'Main Course', item_price: '', item_stock: '' });
+  const [newItem, setNewItem] = useState({ item_name: '', item_type: 'Main Course', item_price: '', item_stock: '', item_description: '' });
+  const [newItemImage, setNewItemImage] = useState(null);
+  const [editItemImage, setEditItemImage] = useState(null);
+  const [uploading, setUploading] = useState(false);
   const [newWaiter, setNewWaiter] = useState({ waiter_fname: '', waiter_lname: '' });
   const [newChef, setNewChef] = useState({ chef_fname: '', chef_lname: '', chef_type: 'Head_Chef' });
   const [editItem, setEditItem] = useState(null);
@@ -53,18 +56,44 @@ export default function Admin() {
     activeOrders: orders.filter(o => o.status === 'active').length
   };
 
+  const uploadImage = async (file) => {
+    if (!file) return '';
+    const formData = new FormData();
+    formData.append('image', file);
+    const res = await fetch('/api/upload', { method: 'POST', body: formData });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || 'Upload failed');
+    return data.url;
+  };
+
   const addMenuItem = async () => {
     if (!newItem.item_name.trim()) { notify('Item name is required', 'error'); return; }
     const price = parseFloat(newItem.item_price);
     if (!newItem.item_price || isNaN(price) || price <= 0) { notify('A valid price is required', 'error'); return; }
     const stock = parseInt(newItem.item_stock, 10);
     if (isNaN(stock) || stock < 0) { notify('Stock must be 0 or more', 'error'); return; }
-    const res = await fetch('/api/menu', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newItem) });
-    const data = await res.json();
-    if (!res.ok || data.error) { notify(data.error || 'Failed to add item', 'error'); return; }
-    setNewItem({ item_name: '', item_type: 'Main Course', item_price: '', item_stock: '' });
-    notify('Menu item added successfully');
-    loadAll();
+    try {
+      setUploading(true);
+      let imageUrl = '';
+      if (newItemImage) {
+        imageUrl = await uploadImage(newItemImage);
+      }
+      const res = await fetch('/api/menu', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...newItem, item_image: imageUrl })
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) { notify(data.error || 'Failed to add item', 'error'); return; }
+      setNewItem({ item_name: '', item_type: 'Main Course', item_price: '', item_stock: '', item_description: '' });
+      setNewItemImage(null);
+      notify('Menu item added successfully');
+      loadAll();
+    } catch (e) {
+      notify(e.message || 'Failed to add item', 'error');
+    } finally {
+      setUploading(false);
+    }
   };
 
   const deleteMenuItem = async (item_no) => {
@@ -80,12 +109,28 @@ export default function Admin() {
     if (!editItem.item_name.trim()) { notify('Item name is required', 'error'); return; }
     const price = parseFloat(editItem.item_price);
     if (isNaN(price) || price <= 0) { notify('A valid price is required', 'error'); return; }
-    const res = await fetch('/api/menu', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(editItem) });
-    const data = await res.json();
-    if (!res.ok || data.error) { notify(data.error || 'Failed to update item', 'error'); return; }
-    setEditItem(null);
-    notify('Item updated successfully');
-    loadAll();
+    try {
+      setUploading(true);
+      let imageUrl = editItem.item_image || '';
+      if (editItemImage) {
+        imageUrl = await uploadImage(editItemImage);
+      }
+      const res = await fetch('/api/menu', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...editItem, item_image: imageUrl })
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) { notify(data.error || 'Failed to update item', 'error'); return; }
+      setEditItem(null);
+      setEditItemImage(null);
+      notify('Item updated successfully');
+      loadAll();
+    } catch (e) {
+      notify(e.message || 'Failed to update item', 'error');
+    } finally {
+      setUploading(false);
+    }
   };
 
   const addWaiter = async () => {
@@ -322,30 +367,53 @@ export default function Admin() {
                   <div className="form-field"><label>Item Name</label><input value={newItem.item_name} onChange={e => setNewItem(n => ({ ...n, item_name: e.target.value }))} placeholder="e.g. Paneer Tikka" /></div>
                   <div className="form-field"><label>Type</label>
                     <select value={newItem.item_type} onChange={e => setNewItem(n => ({ ...n, item_type: e.target.value }))}>
-                      <option>Main Course</option><option>Appetizer</option><option>Dessert</option><option>Beverage</option>
+                      <option>Main Course</option><option>Appetizer</option><option>Bread</option><option>Dessert</option><option>Beverage</option>
                     </select>
                   </div>
                   <div className="form-field"><label>Price (₹)</label><input type="number" value={newItem.item_price} onChange={e => setNewItem(n => ({ ...n, item_price: e.target.value }))} placeholder="120" /></div>
                   <div className="form-field"><label>Stock</label><input type="number" value={newItem.item_stock} onChange={e => setNewItem(n => ({ ...n, item_stock: e.target.value }))} placeholder="50" /></div>
-                  <div className="form-field" style={{ display: 'flex', alignItems: 'flex-end' }}>
-                    <button className="action-btn btn-primary" style={{ width: '100%', padding: '0.65rem' }} onClick={addMenuItem}>+ Add Item</button>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '0.75rem' }}>
+                  <div className="form-field">
+                    <label>Food Image</label>
+                    <input type="file" accept="image/*" onChange={e => setNewItemImage(e.target.files?.[0] || null)}
+                      style={{ padding: '0.5rem', background: 'var(--cream)', border: '1.5px solid #e0d8cc', borderRadius: '8px', fontSize: '0.85rem' }} />
+                    {newItemImage && <span style={{ fontSize: '0.75rem', color: 'var(--muted)', marginTop: '0.25rem' }}>{newItemImage.name}</span>}
                   </div>
+                  <div className="form-field">
+                    <label>Description</label>
+                    <textarea value={newItem.item_description} onChange={e => setNewItem(n => ({ ...n, item_description: e.target.value }))}
+                      placeholder="A brief, enticing description of the dish..."
+                      style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1.5px solid #e0d8cc', borderRadius: '8px', fontFamily: "'DM Sans', sans-serif", fontSize: '0.9rem', outline: 'none', background: 'var(--cream)', resize: 'vertical', minHeight: '60px' }} />
+                  </div>
+                </div>
+                <div style={{ marginTop: '0.75rem' }}>
+                  <button className="action-btn btn-primary" style={{ padding: '0.65rem 1.5rem' }} onClick={addMenuItem} disabled={uploading}>
+                    {uploading ? 'Uploading...' : '+ Add Item'}
+                  </button>
                 </div>
               </div>
               <div className="card">
                 <h2>All Menu Items ({menu.length})</h2>
                 <table>
-                  <thead><tr><th>#</th><th>Name</th><th>Type</th><th>Price</th><th>Stock</th><th>Actions</th></tr></thead>
+                  <thead><tr><th>Img</th><th>#</th><th>Name</th><th>Type</th><th>Price</th><th>Stock</th><th>Actions</th></tr></thead>
                   <tbody>
                     {menu.map(item => (
                       <tr key={item.item_no}>
+                        <td>
+                          {item.item_image ? (
+                            <img src={item.item_image} alt={item.item_name} style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover' }} />
+                          ) : (
+                            <div style={{ width: 40, height: 40, borderRadius: 8, background: '#f0ebe3', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', color: 'var(--muted)' }}>No img</div>
+                          )}
+                        </td>
                         <td>{item.item_no}</td>
                         <td><strong>{item.item_name}</strong></td>
                         <td><span className="badge badge-gold">{item.item_type}</span></td>
                         <td>₹{item.item_price}</td>
                         <td><span className={`badge ${item.item_stock > 10 ? 'badge-active' : item.item_stock > 0 ? 'badge-gold' : 'badge-billed'}`}>{item.item_stock}</span></td>
                         <td>
-                          <button className="action-btn btn-edit" onClick={() => setEditItem({ ...item })}>Edit</button>
+                          <button className="action-btn btn-edit" onClick={() => { setEditItem({ ...item }); setEditItemImage(null); }}>Edit</button>
                           <button className="action-btn btn-delete" onClick={() => deleteMenuItem(item.item_no)}>Delete</button>
                         </td>
                       </tr>
@@ -512,19 +580,38 @@ export default function Admin() {
       {/* Edit Modal */}
       {editItem && (
         <div className="modal-overlay" onClick={() => setEditItem(null)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxHeight: '90vh', overflowY: 'auto' }}>
             <h3>Edit Menu Item</h3>
+            {editItem.item_image && (
+              <div style={{ marginBottom: '1rem', textAlign: 'center' }}>
+                <img src={editItem.item_image} alt="Current" style={{ width: 80, height: 80, borderRadius: 12, objectFit: 'cover' }} />
+              </div>
+            )}
             <div className="form-field" style={{ marginBottom: '1rem' }}><label>Name</label><input value={editItem.item_name} onChange={e => setEditItem(i => ({ ...i, item_name: e.target.value }))} /></div>
             <div className="form-field" style={{ marginBottom: '1rem' }}><label>Type</label>
               <select value={editItem.item_type} onChange={e => setEditItem(i => ({ ...i, item_type: e.target.value }))}>
-                <option>Main Course</option><option>Appetizer</option><option>Dessert</option><option>Beverage</option>
+                <option>Main Course</option><option>Appetizer</option><option>Bread</option><option>Dessert</option><option>Beverage</option>
               </select>
             </div>
             <div className="form-field" style={{ marginBottom: '1rem' }}><label>Price</label><input type="number" value={editItem.item_price} onChange={e => setEditItem(i => ({ ...i, item_price: e.target.value }))} /></div>
-            <div className="form-field"><label>Stock</label><input type="number" value={editItem.item_stock} onChange={e => setEditItem(i => ({ ...i, item_stock: e.target.value }))} /></div>
+            <div className="form-field" style={{ marginBottom: '1rem' }}><label>Stock</label><input type="number" value={editItem.item_stock} onChange={e => setEditItem(i => ({ ...i, item_stock: e.target.value }))} /></div>
+            <div className="form-field" style={{ marginBottom: '1rem' }}>
+              <label>Replace Image</label>
+              <input type="file" accept="image/*" onChange={e => setEditItemImage(e.target.files?.[0] || null)}
+                style={{ padding: '0.5rem', background: 'var(--cream)', border: '1.5px solid #e0d8cc', borderRadius: '8px', fontSize: '0.85rem', width: '100%' }} />
+              {editItemImage && <span style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>{editItemImage.name}</span>}
+            </div>
+            <div className="form-field" style={{ marginBottom: '1rem' }}>
+              <label>Description</label>
+              <textarea value={editItem.item_description || ''} onChange={e => setEditItem(i => ({ ...i, item_description: e.target.value }))}
+                placeholder="A brief, enticing description..."
+                style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1.5px solid #e0d8cc', borderRadius: '8px', fontFamily: "'DM Sans', sans-serif", fontSize: '0.9rem', outline: 'none', background: 'var(--cream)', resize: 'vertical', minHeight: '60px' }} />
+            </div>
             <div className="modal-actions">
               <button className="action-btn btn-delete" onClick={() => setEditItem(null)}>Cancel</button>
-              <button className="action-btn btn-primary" onClick={saveEdit}>Save Changes</button>
+              <button className="action-btn btn-primary" onClick={saveEdit} disabled={uploading}>
+                {uploading ? 'Uploading...' : 'Save Changes'}
+              </button>
             </div>
           </div>
         </div>

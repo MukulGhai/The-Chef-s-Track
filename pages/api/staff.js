@@ -1,27 +1,31 @@
-import { getDb, query, run } from '../../lib/db';
+import { supabase } from '../../lib/db';
 
 export default async function handler(req, res) {
-  let db;
-  try {
-    db = await getDb();
-  } catch (e) {
-    return res.status(500).json({ error: 'Database unavailable' });
-  }
-
   const { type } = req.query;
 
   // ── WAITERS ──────────────────────────────────────────────────────────────────
   if (type === 'waiters') {
     if (req.method === 'GET') {
       try {
-        const waiters = query(db, `
-          SELECT w.*, COALESCE(SUM(t.tips), 0) as total_tips
-          FROM waiter w
-          LEFT JOIN tips t ON w.waiter_id = t.waiter_id
-          GROUP BY w.waiter_id
-          ORDER BY w.waiter_fname
-        `);
-        return res.json(waiters);
+        const { data: waiters, error } = await supabase
+          .from('waiter')
+          .select('*')
+          .order('waiter_fname');
+        if (error) throw error;
+
+        // Get total tips per waiter
+        const { data: tipRows } = await supabase.from('tips').select('waiter_id, tips');
+        const tipMap = {};
+        (tipRows || []).forEach(t => {
+          tipMap[t.waiter_id] = (tipMap[t.waiter_id] || 0) + Number(t.tips);
+        });
+
+        const result = (waiters || []).map(w => ({
+          ...w,
+          total_tips: tipMap[w.waiter_id] || 0,
+        }));
+
+        return res.json(result);
       } catch (e) {
         return res.status(500).json({ error: 'Failed to fetch waiters' });
       }
@@ -33,10 +37,13 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Waiter first name is required' });
       }
       try {
-        const id = run(db,
-          'INSERT INTO waiter (waiter_fname, waiter_lname) VALUES (?,?)',
-          [waiter_fname.trim(), (waiter_lname || '').trim()]);
-        return res.status(201).json({ waiter_id: id });
+        const { data, error } = await supabase
+          .from('waiter')
+          .insert({ waiter_fname: waiter_fname.trim(), waiter_lname: (waiter_lname || '').trim() })
+          .select()
+          .single();
+        if (error) throw error;
+        return res.status(201).json({ waiter_id: data.waiter_id });
       } catch (e) {
         return res.status(500).json({ error: 'Failed to add waiter' });
       }
@@ -47,23 +54,23 @@ export default async function handler(req, res) {
       if (!waiter_id) return res.status(400).json({ error: 'waiter_id is required' });
 
       try {
-        // Verify waiter exists
-        const existing = query(db, 'SELECT waiter_id FROM waiter WHERE waiter_id=?', [waiter_id])[0];
+        const { data: existing } = await supabase.from('waiter').select('waiter_id').eq('waiter_id', waiter_id).single();
         if (!existing) return res.status(404).json({ error: 'Waiter not found' });
 
-        // Check for active orders assigned to this waiter
-        const activeOrders = query(db,
-          "SELECT ord_no FROM ord WHERE waiter_id=? AND status='active'",
-          [waiter_id]);
-        if (activeOrders.length > 0) {
+        const { data: activeOrders } = await supabase
+          .from('ord')
+          .select('ord_no')
+          .eq('waiter_id', waiter_id)
+          .eq('status', 'active');
+
+        if (activeOrders && activeOrders.length > 0) {
           return res.status(409).json({
             error: `Cannot delete: waiter has ${activeOrders.length} active order(s). Bill those orders first.`
           });
         }
 
-        // Cascade delete tips for this waiter
-        run(db, 'DELETE FROM tips WHERE waiter_id=?', [waiter_id]);
-        run(db, 'DELETE FROM waiter WHERE waiter_id=?', [waiter_id]);
+        await supabase.from('tips').delete().eq('waiter_id', waiter_id);
+        await supabase.from('waiter').delete().eq('waiter_id', waiter_id);
         return res.json({ success: true });
       } catch (e) {
         return res.status(500).json({ error: 'Failed to delete waiter' });
@@ -78,7 +85,9 @@ export default async function handler(req, res) {
   if (type === 'chefs') {
     if (req.method === 'GET') {
       try {
-        return res.json(query(db, 'SELECT * FROM chef ORDER BY chef_fname'));
+        const { data, error } = await supabase.from('chef').select('*').order('chef_fname');
+        if (error) throw error;
+        return res.json(data);
       } catch (e) {
         return res.status(500).json({ error: 'Failed to fetch chefs' });
       }
@@ -93,10 +102,13 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Chef type is required' });
       }
       try {
-        const id = run(db,
-          'INSERT INTO chef (chef_fname, chef_lname, chef_type) VALUES (?,?,?)',
-          [chef_fname.trim(), (chef_lname || '').trim(), chef_type.trim()]);
-        return res.status(201).json({ chef_id: id });
+        const { data, error } = await supabase
+          .from('chef')
+          .insert({ chef_fname: chef_fname.trim(), chef_lname: (chef_lname || '').trim(), chef_type: chef_type.trim() })
+          .select()
+          .single();
+        if (error) throw error;
+        return res.status(201).json({ chef_id: data.chef_id });
       } catch (e) {
         return res.status(500).json({ error: 'Failed to add chef' });
       }
@@ -106,9 +118,9 @@ export default async function handler(req, res) {
       const { chef_id } = req.body || {};
       if (!chef_id) return res.status(400).json({ error: 'chef_id is required' });
       try {
-        const existing = query(db, 'SELECT chef_id FROM chef WHERE chef_id=?', [chef_id])[0];
+        const { data: existing } = await supabase.from('chef').select('chef_id').eq('chef_id', chef_id).single();
         if (!existing) return res.status(404).json({ error: 'Chef not found' });
-        run(db, 'DELETE FROM chef WHERE chef_id=?', [chef_id]);
+        await supabase.from('chef').delete().eq('chef_id', chef_id);
         return res.json({ success: true });
       } catch (e) {
         return res.status(500).json({ error: 'Failed to delete chef' });
@@ -130,9 +142,10 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Tips must be a non-negative number' });
       }
       try {
-        run(db,
-          'INSERT INTO tips (waiter_id, cust_id, tips) VALUES (?,?,?)',
-          [waiter_id, cust_id, tipAmount]);
+        const { error } = await supabase
+          .from('tips')
+          .insert({ waiter_id, cust_id, tips: tipAmount });
+        if (error) throw error;
         return res.status(201).json({ success: true });
       } catch (e) {
         return res.status(500).json({ error: 'Failed to record tip' });
@@ -147,7 +160,9 @@ export default async function handler(req, res) {
   if (type === 'customers') {
     if (req.method === 'GET') {
       try {
-        return res.json(query(db, 'SELECT * FROM customer ORDER BY cust_id DESC'));
+        const { data, error } = await supabase.from('customer').select('*').order('cust_id', { ascending: false });
+        if (error) throw error;
+        return res.json(data);
       } catch (e) {
         return res.status(500).json({ error: 'Failed to fetch customers' });
       }
